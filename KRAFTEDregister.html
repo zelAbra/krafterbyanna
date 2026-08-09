@@ -7,13 +7,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --container-bg: rgba(250, 240, 242, 0.85);
-            --card-bg: rgba(255, 255, 255, 0.95);
+            --card-bg: rgba(255, 255, 255, 0.94);
             --primary-pink: #E0A0AC;
-            --text-dark: #5C4A4E;
+            --primary-pink-deep: #C97A8A;
+            --text-dark: #4A3A3E;
             --text-light: #8C7B7F;
-            --border-color: rgba(234, 204, 211, 0.8);
-            --radius: 12px;
+            --border-color: rgba(224, 160, 172, 0.4);
+            --radius: 18px;
+            --radius-pill: 999px;
+            --shadow-lg: 0 20px 50px rgba(92, 74, 78, 0.15);
             --transition-fast: 0.18s ease;
             --transition-base: 0.28s ease;
         }
@@ -31,7 +33,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 30px 15px;
+            padding: 28px 16px;
             background-image: url("kraftedbg.jfif");
             background-repeat: no-repeat;
             background-position: center center;
@@ -41,45 +43,52 @@
         }
 
         .register-card {
-            background-color: var(--card-bg);
-            padding: 40px 30px;
+            background: var(--card-bg);
+            padding: 40px 32px;
             border-radius: var(--radius);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            box-shadow: var(--shadow-lg);
             width: 100%;
-            max-width: 420px;
+            max-width: 440px;
             text-align: center;
-            border: 1px solid var(--border-color);
-            backdrop-filter: blur(5px);
-            animation: cardEnter 0.45s ease both;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            animation: cardEnter 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
         }
 
         @keyframes cardEnter {
-            from { opacity: 0; transform: translateY(16px) scale(0.98); }
+            from { opacity: 0; transform: translateY(20px) scale(0.97); }
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         .register-logo {
-            width: 100px;
-            height: 100px;
+            width: 92px;
+            height: 92px;
             border-radius: 50%;
             object-fit: cover;
-            margin-bottom: 12px;
+            margin-bottom: 14px;
             border: 3px solid #FFFFFF;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+            transition: transform var(--transition-base);
+        }
+
+        .register-logo:hover {
+            transform: scale(1.05) rotate(-4deg);
         }
 
         .register-card h2 {
-            font-size: 1.15rem;
+            font-size: 1.2rem;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 4px;
+            letter-spacing: 1.1px;
+            margin-bottom: 5px;
             color: var(--text-dark);
+            font-weight: 700;
         }
 
         .register-card .subtitle {
             font-size: 0.8rem;
             color: var(--text-light);
-            margin-bottom: 22px;
+            margin-bottom: 24px;
         }
 
         .form-group {
@@ -102,7 +111,7 @@
             font-weight: 600;
             margin-bottom: 6px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.55px;
             color: var(--text-dark);
         }
 
@@ -110,7 +119,7 @@
             width: 100%;
             padding: 12px 14px;
             border: 1.5px solid var(--border-color);
-            border-radius: 12px;
+            border-radius: 14px;
             font-family: inherit;
             font-size: 0.88rem;
             outline: none;
@@ -120,40 +129,42 @@
         }
 
         .form-group input:hover {
-            border-color: rgba(224, 160, 172, 0.7);
+            border-color: rgba(224, 160, 172, 0.75);
         }
 
         .form-group input:focus {
             border-color: var(--primary-pink);
-            box-shadow: 0 0 0 3px rgba(224, 160, 172, 0.2);
+            box-shadow: 0 0 0 4px rgba(224, 160, 172, 0.22);
         }
 
         .form-hint {
             font-size: 0.7rem;
             color: var(--text-light);
             margin-top: 4px;
+            text-align: left;
         }
 
         .btn-register {
             width: 100%;
-            background-color: var(--primary-pink);
+            background: linear-gradient(135deg, var(--primary-pink) 0%, var(--primary-pink-deep) 100%);
             color: white;
             border: none;
-            padding: 13px;
-            border-radius: 24px;
+            padding: 14px;
+            border-radius: var(--radius-pill);
             font-weight: 600;
             font-size: 0.85rem;
             text-transform: uppercase;
-            letter-spacing: 0.6px;
+            letter-spacing: 0.7px;
             cursor: pointer;
-            margin-top: 8px;
-            box-shadow: 0 4px 14px rgba(224, 160, 172, 0.4);
+            margin-top: 10px;
+            box-shadow: 0 5px 18px rgba(224, 160, 172, 0.45);
             transition: transform var(--transition-base), box-shadow var(--transition-base), opacity var(--transition-fast);
+            font-family: inherit;
         }
 
         .btn-register:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 18px rgba(224, 160, 172, 0.5);
+            box-shadow: 0 8px 22px rgba(224, 160, 172, 0.55);
         }
 
         .btn-register:active {
@@ -169,8 +180,8 @@
         .form-message {
             display: none;
             margin-top: 16px;
-            padding: 10px 14px;
-            border-radius: 10px;
+            padding: 11px 14px;
+            border-radius: 12px;
             font-size: 0.8rem;
             font-weight: 500;
             text-align: left;
@@ -190,37 +201,48 @@
             border: 1px solid #c8ecd9;
         }
 
-        .back-link {
-            display: inline-block;
-            margin-top: 18px;
-            color: var(--text-dark);
-            text-decoration: none;
-            font-size: 0.78rem;
-            font-weight: 500;
-            padding: 6px 12px;
-            border-radius: 16px;
-            transition: background-color var(--transition-fast), color var(--transition-fast);
-        }
-
-        .back-link:hover {
-            background: rgba(224, 160, 172, 0.15);
-            color: #C06C84;
-        }
-
         .login-link {
-            margin-top: 6px;
-            font-size: 0.78rem;
+            margin-top: 20px;
+            font-size: 0.8rem;
             color: var(--text-light);
         }
 
         .login-link a {
-            color: #C06C84;
+            color: var(--primary-pink-deep);
             font-weight: 600;
             text-decoration: none;
+            transition: color var(--transition-fast);
         }
 
         .login-link a:hover {
+            color: #A85A6A;
             text-decoration: underline;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 14px;
+            color: var(--text-dark);
+            text-decoration: none;
+            font-size: 0.78rem;
+            font-weight: 500;
+            padding: 8px 14px;
+            border-radius: var(--radius-pill);
+            transition: background-color var(--transition-fast), color var(--transition-fast);
+        }
+
+        .back-link:hover {
+            background: rgba(224, 160, 172, 0.18);
+            color: var(--primary-pink-deep);
+        }
+
+        @media (max-width: 420px) {
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
         }
     </style>
 </head>
@@ -252,7 +274,7 @@
                     <input type="password" id="regConfirmPassword" placeholder="••••••••" minlength="6" required autocomplete="new-password">
                 </div>
             </div>
-            <div class="form-hint" style="margin-top: -8px; margin-bottom: 15px;">At least 6 characters.</div>
+            <div class="form-hint" style="margin-top: -6px; margin-bottom: 14px;">At least 6 characters.</div>
 
             <div class="form-group">
                 <label for="regContact">Contact Number</label>
