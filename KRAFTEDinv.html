@@ -37,6 +37,7 @@
             backdrop-filter: blur(8px); 
             -webkit-backdrop-filter: blur(8px);
             border: 1px solid rgba(255, 255, 255, 0.4);
+            overflow: hidden;
             animation: panelEnter 0.4s ease both;
         }
 
@@ -45,9 +46,12 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #E0A0AC; padding-bottom: 15px; }
-        nav a { text-decoration: none; color: #C06C84; font-weight: 600; margin-left: 8px; padding: 6px 12px; border-radius: 16px; transition: background-color 0.18s ease, color 0.18s ease; }
-        nav a:hover { background: rgba(224, 160, 172, 0.15); }
+        nav { display: flex; justify-content: space-between; align-items: center; margin: -30px -30px 30px -30px; padding: 22px 30px; background-color: #E0A0AC; border-top-left-radius: 12px; border-top-right-radius: 12px; }
+        nav h2 { color: #FFFFFF; }
+        nav a { text-decoration: none; color: #FFFFFF; font-weight: 600; margin-left: 8px; padding: 6px 12px; border-radius: 16px; transition: background-color 0.18s ease, color 0.18s ease; }
+        nav a:hover { background: rgba(255, 255, 255, 0.2); }
+        nav a.logout-btn { color: #FFFFFF; background: rgba(231, 76, 60, 0.35); }
+        nav a.logout-btn:hover { background: rgba(231, 76, 60, 0.5); }
         
         .metrics-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 30px; }
         .metric-card { background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 12px; border: 1px solid rgba(234, 204, 211, 0.6); box-shadow: 0 3px 10px rgba(0,0,0,0.06); transition: transform 0.28s ease, box-shadow 0.28s ease; }
@@ -247,7 +251,7 @@
             <div style="display: flex; align-items: center; gap: 15px;">
                 <a href="KRAFTEDMP.html">Maintenance Panel</a>
                 <a href="index.html" target="_blank">View Shop</a>
-                <a href="#" id="logoutBtn" style="color:#E74C3C;">Logout</a>
+                <a href="#" id="logoutBtn" class="logout-btn">Logout</a>
             </div>
         </nav>
 

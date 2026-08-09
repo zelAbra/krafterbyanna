@@ -37,6 +37,7 @@
             backdrop-filter: blur(8px); 
             -webkit-backdrop-filter: blur(8px);
             border: 1px solid rgba(255, 255, 255, 0.4);
+            overflow: hidden;
             animation: panelEnter 0.4s ease both;
         }
 
@@ -45,11 +46,12 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #E0A0AC; padding-bottom: 15px; }
-        nav a { text-decoration: none; color: #C06C84; font-weight: 600; margin-left: 15px; padding: 6px 12px; border-radius: 16px; transition: background-color 0.18s ease, color 0.18s ease; }
-        nav a:hover { background: rgba(224, 160, 172, 0.15); }
-        nav a.logout-btn { color: #E74C3C; }
-        nav a.logout-btn:hover { background: rgba(231, 76, 60, 0.1); text-decoration: none; }
+        nav { display: flex; justify-content: space-between; align-items: center; margin: -30px -30px 30px -30px; padding: 22px 30px; background-color: #E0A0AC; border-top-left-radius: 12px; border-top-right-radius: 12px; }
+        nav h2 { color: #FFFFFF; }
+        nav a { text-decoration: none; color: #FFFFFF; font-weight: 600; margin-left: 15px; padding: 6px 12px; border-radius: 16px; transition: background-color 0.18s ease, color 0.18s ease; }
+        nav a:hover { background: rgba(255, 255, 255, 0.2); }
+        nav a.logout-btn { color: #FFFFFF; background: rgba(231, 76, 60, 0.35); }
+        nav a.logout-btn:hover { background: rgba(231, 76, 60, 0.5); text-decoration: none; }
         .form-group { margin-bottom: 18px; }
         label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.4px; color: #5C4A4E; }
         
@@ -273,6 +275,43 @@
             color: #8C7B7F;
             font-style: italic;
         }
+
+        /* USER ACCOUNTS FILTER BAR */
+        .accounts-filter-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .accounts-filter-bar input[type="text"] {
+            width: auto;
+            flex: 1 1 220px;
+            padding: 10px 14px;
+            font-size: 0.85rem;
+        }
+        .accounts-filter-bar select {
+            width: auto;
+            flex: 0 0 150px;
+            padding: 10px 30px 10px 14px;
+            font-size: 0.85rem;
+        }
+        .accounts-filter-bar button {
+            flex: 0 0 auto;
+            background: #f0f0f0;
+            color: #5C4A4E;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-family: inherit;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background-color 0.18s ease;
+        }
+        .accounts-filter-bar button:hover {
+            background: #e4e4e4;
+        }
     </style>
 </head>
 <body data-page="maintenance">
@@ -364,7 +403,23 @@
             <h3 style="margin-top: 40px;">User Accounts</h3>
             <div class="backup-panel">
                 <p class="backup-hint" style="margin-top:0;">Disable an account to instantly block sign-in without losing their data, or delete it permanently — deleting also removes their admin/buyer profile, but never touches past orders or sales history.</p>
-                <table style="margin-top: 14px;">
+
+                <div class="accounts-filter-bar" style="margin-top: 14px;">
+                    <input type="text" id="accountsSearchInput" placeholder="Search by email or username...">
+                    <select id="accountsTypeFilter">
+                        <option value="All">All Types</option>
+                        <option value="admin">Co-Admins</option>
+                        <option value="buyer">Buyers</option>
+                    </select>
+                    <select id="accountsStatusFilter">
+                        <option value="All">All Statuses</option>
+                        <option value="active">Active</option>
+                        <option value="disabled">Disabled</option>
+                    </select>
+                    <button type="button" onclick="clearAccountsFilters()">Clear</button>
+                </div>
+
+                <table style="margin-top: 0;">
                     <thead>
                         <tr>
                             <th>Email</th>

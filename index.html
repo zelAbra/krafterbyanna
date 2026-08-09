@@ -6,6 +6,9 @@
     <title>KRAFTED by ANNA | Handmade Knits & Plushies</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* ==========================================================================
+           CSS VARIABLES & RESET
+           ========================================================================== */
         :root {
             --container-bg: rgba(250, 240, 242, 0.5); 
             --card-bg: rgba(255, 255, 255, 0.85);
@@ -25,6 +28,9 @@
             padding: 0;
         }
 
+        /* ==========================================================================
+           BODY / PAGE BACKGROUND
+           ========================================================================== */
         body {
             font-family: 'Poppins', sans-serif;
             color: var(--text-dark);
@@ -40,6 +46,9 @@
             background-color: #F8E2E7;
         }
 
+        /* ==========================================================================
+           SITE WRAPPER & LOGO
+           ========================================================================== */
         .site-wrapper {
             max-width: 1200px;
             height: calc(100vh - 40px);
@@ -72,6 +81,9 @@
             border: 3px solid #FFFFFF;
         }
 
+        /* ==========================================================================
+           NAVIGATION / HEADER
+           ========================================================================== */
         nav {
             display: flex;
             justify-content: flex-end;
@@ -175,6 +187,9 @@
             100% { transform: scale(1); }
         }
 
+        /* ==========================================================================
+           MAIN LAYOUT & LEFT SIDEBAR
+           ========================================================================== */
         .main-layout {
             display: grid;
             grid-template-columns: 320px 1fr;
@@ -228,7 +243,9 @@
             object-fit: cover;
         }
 
-        /* RIGHT CONTENT AREA & CATEGORY FILTER BAR */
+        /* ==========================================================================
+           RIGHT CONTENT AREA & CATEGORY FILTER BAR
+           ========================================================================== */
         .right-content-area {
             display: flex;
             flex-direction: column;
@@ -283,7 +300,9 @@
             box-shadow: 0 2px 10px rgba(224, 160, 172, 0.25);
         }
 
-        /* PRODUCT GRID & CARDS */
+        /* ==========================================================================
+           PRODUCT GRID & CARDS
+           ========================================================================== */
         .product-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -363,7 +382,9 @@
             margin-bottom: 8px;
         }
 
-        /* CARD QUANTITY SELECTOR PANEL */
+        /* ==========================================================================
+           CARD QUANTITY SELECTOR & ADD TO CART
+           ========================================================================== */
         .card-qty-panel {
             display: flex;
             align-items: center;
@@ -443,7 +464,9 @@
             transform: translateY(0) scale(0.98);
         }
 
-        /* CART DRAWER */
+        /* ==========================================================================
+           CART DRAWER
+           ========================================================================== */
         .cart-drawer-overlay {
             position: fixed;
             top: 0;
@@ -643,6 +666,9 @@
             transform: translateY(0) scale(0.98);
         }
 
+        /* ==========================================================================
+           FOOTER
+           ========================================================================== */
         footer {
             background-color: rgba(242, 213, 220, 0.85);
             padding: 25px 30px;
@@ -698,6 +724,9 @@
             text-decoration: none;
         }
 
+        /* ==========================================================================
+           RESPONSIVE / MEDIA QUERIES
+           ========================================================================== */
         @media (max-width: 900px) {
             body { height: auto; overflow: auto; }
             .site-wrapper { height: auto; }
@@ -716,6 +745,7 @@
             <img src="Kraftedlogo.jfif" alt="KRAFTED by ANNA Logo" class="logo-img">
         </div>
 
+        <!-- SITE NAVIGATION -->
         <nav>
             <ul class="nav-links">
                 <li><a href="index.html" class="active">Shop Now</a></li>
@@ -759,6 +789,7 @@
             </div>
         </div>
 
+        <!-- SITE FOOTER -->
         <footer>
             <div class="footer-grid">
                 <div class="footer-col">
