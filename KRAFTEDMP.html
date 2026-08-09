@@ -282,7 +282,7 @@
             <h2 style="margin: 0;">Maintenance Panel</h2>
             <div>
                 <a href="KRAFTEDinv.html">Go to Inventory</a>
-                <a href="KRAFTED.html" target="_blank">View Shop</a>
+                <a href="index.html" target="_blank">View Shop</a>
                 <!-- LOGOUT FEATURE -->
                 <a href="#" id="logoutBtn" class="logout-btn">Logout</a>
             </div>
@@ -299,13 +299,13 @@
             <div class="form-group">
                 <label for="prodCategory">Category</label>
                 <select id="prodCategory" required>
-                    <option value="" disabled selected>Select Category</option>
+                    <option value="" selected>Select Category</option>
                 </select>
             </div>
 
             <div class="form-group">
                 <label for="prodPrice">Price (₱)</label>
-                <input type="number" id="prodPrice" required min="1" step="0.01" placeholder="0.00">
+                <input type="number" id="prodPrice" required min="1" max="99999999.99" step="0.01" placeholder="0.00">
             </div>
             <div class="form-group">
                 <label for="prodStock">Initial Stock (Units)</label>
@@ -332,21 +332,6 @@
             </thead>
             <tbody id="maintenanceTableBody"></tbody>
         </table>
-
-        <h3 style="margin-top: 40px;">Data & Backup</h3>
-        <div class="backup-panel">
-            <div class="storage-meter-track">
-                <div class="storage-meter-fill" id="storageUsageBar"></div>
-            </div>
-            <p class="storage-meter-label" id="storageUsageLabel">Checking storage usage…</p>
-
-            <div class="backup-actions">
-                <button type="button" class="btn-save" onclick="downloadBackup()">⬇ Download Backup</button>
-                <label for="restoreFileInput" class="btn-restore">⬆ Restore From Backup</label>
-                <input type="file" id="restoreFileInput" accept="application/json" style="display:none;" onchange="restoreBackup(this.files[0])">
-            </div>
-            <p class="backup-hint">Backup downloads your full catalog, orders, and sales log as a JSON file. Restoring REPLACES all current data with the contents of the file you choose.</p>
-        </div>
 
         <!-- MAIN ADMIN ONLY: hidden unless the signed-in account is the super admin -->
         <div id="superAdminSection" style="display:none;">

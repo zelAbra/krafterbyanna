@@ -63,7 +63,7 @@ function populateCategorySelect(selectEl, { allOption = false, placeholder = nul
     const optionsHTML = CATEGORIES.map(cat => `<option value="${escapeHTML(cat)}">${escapeHTML(cat)}</option>`).join('');
     let prefixHTML = '';
     if (placeholder) {
-        prefixHTML = `<option value="" disabled selected>${escapeHTML(placeholder)}</option>`;
+        prefixHTML = `<option value="" selected>${escapeHTML(placeholder)}</option>`;
     } else if (allOption) {
         prefixHTML = `<option value="All">All Categories</option>`;
     }
@@ -380,37 +380,6 @@ function compressImageFile(file, maxDimension = 900, quality = 0.75) {
 }
 
 /* ==========================================================================
-   STORAGE USAGE INDICATOR (Maintenance Panel)
-   ========================================================================== */
-
-async function refreshStorageUsageUI() {
-    const bar = document.getElementById('storageUsageBar');
-    const label = document.getElementById('storageUsageLabel');
-    if (!bar || !label) return;
-
-    if (navigator.storage && navigator.storage.estimate) {
-        try {
-            const { usage, quota } = await navigator.storage.estimate();
-            const usageMB = (usage / (1024 * 1024)).toFixed(1);
-            const quotaMB = (quota / (1024 * 1024)).toFixed(0);
-            const pct = quota > 0 ? Math.min(100, (usage / quota) * 100) : 0;
-
-            bar.style.width = pct.toFixed(1) + '%';
-            bar.style.background = pct > 85 ? '#E74C3C' : (pct > 60 ? '#E67E22' : '#27AE60');
-            label.textContent = `Using about ${usageMB} MB of ~${quotaMB} MB available in this browser (${pct.toFixed(1)}%).`;
-
-            if (pct > 85) {
-                label.textContent += ' Consider downloading a backup and clearing old sales history soon.';
-            }
-        } catch (e) {
-            label.textContent = 'Storage usage information is unavailable in this browser.';
-        }
-    } else {
-        label.textContent = 'Storage usage information is unavailable in this browser.';
-    }
-}
-
-/* ==========================================================================
    FILTER HELPER FUNCTIONS
    ========================================================================== */
 
@@ -571,7 +540,7 @@ async function renderStorefrontAccountNav() {
         // Stay on the storefront (unlike the admin logout, which bounces
         // to the admin login page) -- a buyer signing out should just
         // land back on the shop, not on an admin-only form.
-        window.location.href = 'KRAFTED.html';
+        window.location.href = 'index.html';
     });
 }
 
@@ -898,7 +867,7 @@ function initLoginPage() {
                 // customer. Nothing wrong with that; send them to the
                 // shop rather than treating it as a failed login.
                 localStorage.removeItem('krafted_is_logged_in');
-                window.location.href = 'KRAFTED.html';
+                window.location.href = 'index.html';
             }
         } catch (err) {
             console.error('Login error:', err);
@@ -1001,7 +970,7 @@ function initRegisterPage() {
 
             if (data.session) {
                 showMessage('Account created! You are now signed in. Redirecting to the shop…', 'success');
-                setTimeout(() => { window.location.href = 'KRAFTED.html'; }, 1500);
+                setTimeout(() => { window.location.href = 'index.html'; }, 1500);
             } else {
                 showMessage('Account created! Please check your email to confirm your account before logging in.', 'success');
                 registerForm.reset();
@@ -1027,7 +996,6 @@ async function initMaintenancePage() {
     const productForm = document.getElementById('productForm');
     populateCategorySelect(document.getElementById('prodCategory'), { placeholder: 'Select Category' });
     await renderMaintenanceTable();
-    refreshStorageUsageUI();
     await initSuperAdminPanel();
 
     if (productForm) {
@@ -1038,6 +1006,15 @@ async function initMaintenancePage() {
             const price = document.getElementById('prodPrice')?.value || 0;
             const stockInput = document.getElementById('prodStock')?.value || 0;
             const imageInput = document.getElementById('prodImage');
+
+            const parsedPrice = parseFloat(price);
+            // Matches the database column's numeric(10,2) limit (8 digits
+            // before the decimal point, max 99,999,999.99) -- catching it
+            // here gives a clear message instead of a raw 400 from Postgres.
+            if (isNaN(parsedPrice) || parsedPrice <= 0 || parsedPrice > 99999999.99) {
+                alert('Please enter a price between ₱1 and ₱99,999,999.99.');
+                return;
+            }
 
             let newStock = parseInt(stockInput, 10);
             if (isNaN(newStock) || newStock < 0) newStock = 0;
@@ -1292,7 +1269,6 @@ async function saveProductToCatalog(title, category, price, stock, imageStr) {
 
     productsCache = null;
     await renderMaintenanceTable();
-    refreshStorageUsageUI();
 }
 
 async function renderMaintenanceTable() {
@@ -1334,90 +1310,6 @@ async function renderMaintenanceTable() {
     }).join('');
 }
 
-window.downloadBackup = async function() {
-    const backup = {
-        exportedAt: new Date().toISOString(),
-        format: 'krafted-backup-v3-supabase',
-        products: await getStoredProducts(),
-        orders: await getStoredOrders(),
-        salesLog: await getStoredSalesLog()
-    };
-
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    const dateStamp = new Date().toISOString().slice(0, 10);
-    link.href = url;
-    link.download = `krafted-backup-${dateStamp}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-};
-
-// Restoring now goes through the restore_backup() database function in a
-// single transaction, instead of three separate client-side delete+insert
-// round trips. That old approach could leave the store in a half-restored
-// state (e.g. orders wiped but sales_log restore failing partway through)
-// if the connection dropped mid-way; this way it's all-or-nothing.
-window.restoreBackup = function(file) {
-    if (!file) return;
-
-    if (!confirm('Restoring will REPLACE your current catalog, orders, and sales log with the contents of this backup file. Continue?')) {
-        document.getElementById('restoreFileInput').value = '';
-        return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        try {
-            const data = JSON.parse(e.target.result);
-
-            if (!Array.isArray(data.products) || !Array.isArray(data.orders) || !Array.isArray(data.salesLog)) {
-                throw new Error('Backup file is missing expected data.');
-            }
-
-            // Backups from the old Firebase version (or earlier) may still
-            // carry a duplicated `image` field on order items / sales
-            // entries -- strip it on the way in so restoring doesn't
-            // reintroduce old storage bloat. Missing `saleId` is backfilled.
-            const cleanedOrders = data.orders.map(order => ({
-                ...order,
-                items: Array.isArray(order.items)
-                    ? order.items.map(({ image, ...rest }) => rest)
-                    : order.items
-            }));
-            const cleanedSales = data.salesLog.map((sale, idx) => {
-                const { image, ...rest } = sale;
-                return {
-                    saleId: sale.saleId || ((sale.transactionId || 'legacy') + '-' + (sale.productId || 'x') + '-' + idx),
-                    ...rest
-                };
-            });
-
-            const { error } = await sb.rpc('restore_backup', {
-                p_products: data.products,
-                p_orders: cleanedOrders,
-                p_sales_log: cleanedSales
-            });
-            if (error) throw error;
-
-            productsCache = null;
-            ordersCache = null;
-
-            alert('Backup restored successfully.');
-            await renderMaintenanceTable();
-            refreshStorageUsageUI();
-        } catch (err) {
-            console.error('Error restoring backup:', err);
-            alert('Could not restore this file: ' + (err.message || 'it does not look like a valid KRAFTED backup.'));
-        } finally {
-            document.getElementById('restoreFileInput').value = '';
-        }
-    };
-    reader.readAsText(file);
-};
-
 window.deleteProduct = async function(id) {
     if (confirm('Remove this product from the shop catalog?')) {
         await deleteProductDoc(id);
@@ -1425,7 +1317,6 @@ window.deleteProduct = async function(id) {
 
         if (document.body.getAttribute('data-page') === 'maintenance') {
             await renderMaintenanceTable();
-            refreshStorageUsageUI();
         }
     }
 };
