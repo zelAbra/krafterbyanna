@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account | KRAFTED by ANNA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --container-bg: rgba(250, 240, 242, 0.85);
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --primary-pink: #E0A0AC;
+            --text-dark: #5C4A4E;
+            --text-light: #8C7B7F;
+            --border-color: rgba(234, 204, 211, 0.8);
+            --radius: 12px;
+            --transition-fast: 0.18s ease;
+            --transition-base: 0.28s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            color: var(--text-dark);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 30px 15px;
+            background-image: url("kraftedbg.jfif");
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-size: cover;
+            background-attachment: fixed;
+            background-color: #F8E2E7;
+        }
+
+        .register-card {
+            background-color: var(--card-bg);
+            padding: 40px 30px;
+            border-radius: var(--radius);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(5px);
+            animation: cardEnter 0.45s ease both;
+        }
+
+        @keyframes cardEnter {
+            from { opacity: 0; transform: translateY(16px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .register-logo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 12px;
+            border: 3px solid #FFFFFF;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .register-card h2 {
+            font-size: 1.15rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+            color: var(--text-dark);
+        }
+
+        .register-card .subtitle {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-bottom: 22px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-dark);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1.5px solid var(--border-color);
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 0.88rem;
+            outline: none;
+            background: #fff;
+            color: var(--text-dark);
+            transition: border-color var(--transition-fast), box-shadow var(--transition-base);
+        }
+
+        .form-group input:hover {
+            border-color: rgba(224, 160, 172, 0.7);
+        }
+
+        .form-group input:focus {
+            border-color: var(--primary-pink);
+            box-shadow: 0 0 0 3px rgba(224, 160, 172, 0.2);
+        }
+
+        .form-hint {
+            font-size: 0.7rem;
+            color: var(--text-light);
+            margin-top: 4px;
+        }
+
+        .btn-register {
+            width: 100%;
+            background-color: var(--primary-pink);
+            color: white;
+            border: none;
+            padding: 13px;
+            border-radius: 24px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            cursor: pointer;
+            margin-top: 8px;
+            box-shadow: 0 4px 14px rgba(224, 160, 172, 0.4);
+            transition: transform var(--transition-base), box-shadow var(--transition-base), opacity var(--transition-fast);
+        }
+
+        .btn-register:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(224, 160, 172, 0.5);
+        }
+
+        .btn-register:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .btn-register:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .form-message {
+            display: none;
+            margin-top: 16px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-align: left;
+        }
+
+        .form-message.error {
+            display: block;
+            background: #fdecea;
+            color: #c0392b;
+            border: 1px solid #f5c6c1;
+        }
+
+        .form-message.success {
+            display: block;
+            background: #eafaf1;
+            color: #1e8449;
+            border: 1px solid #c8ecd9;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 18px;
+            color: var(--text-dark);
+            text-decoration: none;
+            font-size: 0.78rem;
+            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 16px;
+            transition: background-color var(--transition-fast), color var(--transition-fast);
+        }
+
+        .back-link:hover {
+            background: rgba(224, 160, 172, 0.15);
+            color: #C06C84;
+        }
+
+        .login-link {
+            margin-top: 6px;
+            font-size: 0.78rem;
+            color: var(--text-light);
+        }
+
+        .login-link a {
+            color: #C06C84;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body data-page="register">
+
+    <div class="register-card">
+        <img src="Kraftedlogo.jfif" alt="Logo" class="register-logo">
+        <h2>Create Your Account</h2>
+        <div class="subtitle">Sign up to shop with KRAFTED by ANNA</div>
+
+        <form id="registerForm" novalidate>
+            <div class="form-group">
+                <label for="regEmail">Email</label>
+                <input type="email" id="regEmail" placeholder="you@example.com" required autocomplete="email">
+            </div>
+
+            <div class="form-group">
+                <label for="regUsername">Username</label>
+                <input type="text" id="regUsername" placeholder="e.g. annacrafts" minlength="3" required autocomplete="username">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="regPassword">Password</label>
+                    <input type="password" id="regPassword" placeholder="••••••••" minlength="6" required autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label for="regConfirmPassword">Confirm Password</label>
+                    <input type="password" id="regConfirmPassword" placeholder="••••••••" minlength="6" required autocomplete="new-password">
+                </div>
+            </div>
+            <div class="form-hint" style="margin-top: -8px; margin-bottom: 15px;">At least 6 characters.</div>
+
+            <div class="form-group">
+                <label for="regContact">Contact Number</label>
+                <input type="tel" id="regContact" placeholder="09XX XXX XXXX" required autocomplete="tel">
+            </div>
+
+            <button type="submit" class="btn-register">Create Account</button>
+
+            <div id="formMessage" class="form-message"></div>
+        </form>
+
+        <div class="login-link">Already have an account? <a href="KRAFTEDlogin.html">Log in</a></div>
+        <a href="KRAFTED.html" class="back-link">← Return to Storefront</a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="krafted.js"></script>
+</body>
+</html>

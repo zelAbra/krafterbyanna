@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KRAFTED | Inventory & Sales</title>
+    <!-- LOGIN GUARD -->
+    <script>
+        if (localStorage.getItem('krafted_is_logged_in') !== 'true') {
+            window.location.replace('KRAFTEDlogin.html');
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            color: #5C4A4E; 
+            background-image: url("kraftedbg.jfif");
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-size: cover;
+            background-attachment: fixed;
+            background-color: #F8E2E7;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .wrapper { 
+            max-width: 1100px; 
+            margin: 0 auto; 
+            background: rgba(250, 240, 242, 0.5); 
+            border-radius: 12px; 
+            padding: 30px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15); 
+            backdrop-filter: blur(8px); 
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            animation: panelEnter 0.4s ease both;
+        }
+
+        @keyframes panelEnter {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #E0A0AC; padding-bottom: 15px; }
+        nav a { text-decoration: none; color: #C06C84; font-weight: 600; margin-left: 8px; padding: 6px 12px; border-radius: 16px; transition: background-color 0.18s ease, color 0.18s ease; }
+        nav a:hover { background: rgba(224, 160, 172, 0.15); }
+        
+        .metrics-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 30px; }
+        .metric-card { background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 12px; border: 1px solid rgba(234, 204, 211, 0.6); box-shadow: 0 3px 10px rgba(0,0,0,0.06); transition: transform 0.28s ease, box-shadow 0.28s ease; }
+        .metric-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
+        .metric-card h3 { margin: 0 0 10px 0; font-size: 0.75rem; color: #8C7B7F; text-transform: uppercase; letter-spacing: 0.4px; }
+        .metric-card .val { font-size: 1.7rem; font-weight: 700; color: #5C4A4E; transition: color 0.2s ease; }
+        
+        .filter-bar { 
+            background: rgba(255, 255, 255, 0.9); 
+            padding: 16px 18px; 
+            border-radius: 12px; 
+            margin-bottom: 24px; 
+            display: flex; 
+            gap: 12px; 
+            align-items: center; 
+            border: 1px solid rgba(234, 204, 211, 0.6); 
+            flex-wrap: wrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .filter-bar strong { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.4px; color: #5C4A4E; margin-right: 4px; }
+        .filter-bar input, .filter-bar select { 
+            padding: 9px 14px; 
+            border: 1.5px solid rgba(234, 204, 211, 0.8); 
+            border-radius: 20px; 
+            font-family: inherit; 
+            font-size: 0.85rem; 
+            color: #5C4A4E; 
+            background: white;
+            outline: none;
+            transition: border-color 0.18s ease, box-shadow 0.28s ease;
+        }
+        .filter-bar input:hover, .filter-bar select:hover,
+        .filter-bar input:focus, .filter-bar select:focus {
+            border-color: #E0A0AC;
+            box-shadow: 0 0 0 3px rgba(224, 160, 172, 0.18);
+        }
+        .filter-bar select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%235C4A4E' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 32px;
+            cursor: pointer;
+            min-width: 150px;
+        }
+        .filter-bar button { 
+            padding: 9px 18px; 
+            border: none; 
+            border-radius: 20px; 
+            cursor: pointer; 
+            font-weight: 600; 
+            font-family: inherit;
+            font-size: 0.85rem;
+            transition: transform 0.28s ease, box-shadow 0.28s ease, background-color 0.18s ease, opacity 0.18s ease;
+        }
+        .btn-filter { 
+            background: #E0A0AC; 
+            color: white; 
+            box-shadow: 0 3px 10px rgba(224, 160, 172, 0.35);
+        }
+        .btn-filter:hover { 
+            transform: translateY(-1px); 
+            box-shadow: 0 5px 14px rgba(224, 160, 172, 0.45); 
+        }
+        .btn-filter:active, .btn-clear:active, .btn-reset:active {
+            transform: scale(0.97);
+        }
+        .btn-clear { 
+            background: #f0f0f0; 
+            color: #5C4A4E; 
+        }
+        .btn-clear:hover { 
+            background: #e4e4e4; 
+        }
+        
+        .table-section { margin-bottom: 35px; }
+        .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .btn-reset { 
+            background: #E74C3C; 
+            color: white; 
+            border: none; 
+            padding: 9px 16px; 
+            border-radius: 20px; 
+            cursor: pointer; 
+            font-weight: 600; 
+            font-family: inherit;
+            font-size: 0.85rem;
+            box-shadow: 0 3px 10px rgba(231, 76, 60, 0.3);
+            transition: transform 0.28s ease, box-shadow 0.28s ease, opacity 0.18s ease;
+        }
+        .btn-reset:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 14px rgba(231, 76, 60, 0.4);
+        }
+
+        /* TABLE ALIGNMENT STYLES */
+        table { width: 100%; border-collapse: collapse; background: rgba(255, 255, 255, 0.9); border-radius: 12px; overflow: hidden; margin-bottom: 10px; border: 1px solid rgba(234, 204, 211, 0.6); }
+        th, td { padding: 14px 15px; text-align: left; vertical-align: middle; border-bottom: 1px solid #eee; transition: background-color 0.18s ease; }
+        th { background: #fdf5f6; font-size: 0.78rem; text-transform: uppercase; color: #8C7B7F; font-weight: 700; letter-spacing: 0.3px; }
+        tbody tr:hover td { background-color: rgba(248, 226, 231, 0.3); }
+        
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+
+        .product-cell { display: flex; align-items: center; gap: 12px; font-weight: 600; }
+        .table-img { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+        
+        .badge-stock { background: #d4efdf; color: #1e8449; padding: 5px 12px; border-radius: 14px; font-size: 0.78rem; font-weight: 600; display: inline-block; }
+        .badge-low-stock { background: #fadbd8; color: #c0392b; padding: 5px 12px; border-radius: 14px; font-size: 0.78rem; font-weight: 600; display: inline-block; }
+        .badge-sales { background: #fdebd0; color: #d68910; padding: 5px 12px; border-radius: 14px; font-size: 0.78rem; font-weight: 600; display: inline-block; }
+        .badge-category { background: #F8E2E7; color: #C06C84; padding: 5px 12px; border-radius: 14px; font-size: 0.78rem; font-weight: 600; display: inline-block; }
+        .badge-refunded { background: #eeeeee; color: #7f7f7f; padding: 5px 12px; border-radius: 14px; font-size: 0.78rem; font-weight: 600; display: inline-block; }
+        .btn-refund { 
+            background: #E67E22; 
+            color: white; 
+            border: none; 
+            padding: 7px 14px; 
+            border-radius: 16px; 
+            cursor: pointer; 
+            font-weight: 600; 
+            font-size: 0.75rem;
+            transition: transform 0.28s ease, box-shadow 0.28s ease, opacity 0.18s ease;
+            box-shadow: 0 2px 6px rgba(230, 126, 34, 0.3);
+        }
+        .btn-refund:hover { 
+            opacity: 0.95; 
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(230, 126, 34, 0.4);
+        }
+        .btn-refund:active {
+            transform: scale(0.96);
+        }
+
+        /* WHOLE-TRANSACTION CANCEL (distinct from the per-item Refund
+           button above -- voids every item in an order at once) */
+        .order-action-note {
+            margin-top: 6px;
+        }
+        .btn-cancel-order {
+            background: #E74C3C;
+            color: white;
+            border: none;
+            padding: 7px 14px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.75rem;
+            font-family: inherit;
+            transition: transform 0.28s ease, box-shadow 0.28s ease, opacity 0.18s ease;
+            box-shadow: 0 2px 6px rgba(231, 76, 60, 0.3);
+        }
+        .btn-cancel-order:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(231, 76, 60, 0.4);
+        }
+        .btn-cancel-order:active {
+            transform: scale(0.96);
+        }
+        .order-action-note:not(:has(button)) {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #8C7B7F;
+            font-style: italic;
+        }
+
+        .text-muted { color: #8C7B7F; font-size: 0.85rem; }
+
+        /* Export button polish */
+        #exportExcelBtn {
+            background: #27AE60 !important;
+            color: white !important;
+            border: none !important;
+            padding: 9px 16px !important;
+            border-radius: 20px !important;
+            cursor: pointer;
+            font-weight: 600 !important;
+            font-family: inherit !important;
+            font-size: 0.85rem !important;
+            box-shadow: 0 3px 10px rgba(39, 174, 96, 0.35);
+            transition: transform 0.28s ease, box-shadow 0.28s ease, opacity 0.18s ease !important;
+        }
+        #exportExcelBtn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 14px rgba(39, 174, 96, 0.45);
+        }
+        #exportExcelBtn:active {
+            transform: scale(0.97);
+        }
+    </style>
+</head>
+<body data-page="inventory">
+
+    <div class="wrapper">
+        <nav>
+            <h2 style="margin: 0;">Inventory & Sales Dashboard</h2>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <a href="KRAFTEDMP.html">Maintenance Panel</a>
+                <a href="KRAFTED.html" target="_blank">View Shop</a>
+                <a href="#" id="logoutBtn" style="color:#E74C3C;">Logout</a>
+            </div>
+        </nav>
+
+        <div class="filter-bar">
+            <strong>Filter Dashboard:</strong>
+            
+            <select id="categoryFilter" onchange="applyDateFilter()">
+                <option value="All">All Categories</option>
+            </select>
+
+            <span style="color: #8C7B7F; margin: 0 4px;">|</span>
+
+            <input type="date" id="startDate">
+            <input type="date" id="endDate">
+            
+            <button class="btn-filter" onclick="applyDateFilter()">Apply Filter</button>
+            <button class="btn-clear" onclick="clearDateFilter()">Clear All</button>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <h3>Total Revenue (Net of Refunds)</h3>
+                <div class="val" id="metricTotalSales">₱0.00</div>
+            </div>
+            <div class="metric-card">
+                <h3>Total Units Sold</h3>
+                <div class="val" id="metricTotalQty">0</div>
+            </div>
+            <div class="metric-card">
+                <h3>Total Refunded</h3>
+                <div class="val" id="metricTotalRefunded">₱0.00</div>
+            </div>
+            <div class="metric-card">
+                <h3>Total Stock Available</h3>
+                <div class="val" id="metricTotalStock">0</div>
+            </div>
+            <div class="metric-card">
+                <h3>Unique Products</h3>
+                <div class="val" id="metricProductCount">0</div>
+            </div>
+        </div>
+
+        <!-- PRODUCT STOCK BREAKDOWN SECTION -->
+        <div class="table-section">
+            <div class="table-header">
+                <h3>Product Stock Breakdown</h3>
+                <button id="exportExcelBtn" onclick="exportDataToExcel()">⬇ Export to Excel</button>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">Product</th>
+                        <th style="width: 12%;">Category</th>
+                        <th class="text-right" style="width: 13%;">Price</th>
+                        <th class="text-center" style="width: 15%;">Stock Available</th>
+                        <th class="text-center" style="width: 10%;">Total Sold</th>
+                        <th class="text-center" style="width: 12%;">Date Added</th>
+                        <th class="text-right" style="width: 13%;">Total Revenue</th>
+                    </tr>
+                </thead>
+                <tbody id="inventoryTableBody"></tbody>
+            </table>
+        </div>
+
+        <!-- RECENT TRANSACTIONS / SALES LOG SECTION -->
+        <div class="table-section">
+            <div class="table-header">
+                <h3>Recent Sales & Order Log</h3>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Order ID / Date</th>
+                        <th style="width: 24%;">Product Purchased</th>
+                        <th style="width: 12%;">Category</th>
+                        <th class="text-center" style="width: 10%;">Qty Sold</th>
+                        <th class="text-right" style="width: 12%;">Unit Price</th>
+                        <th class="text-right" style="width: 13%;">Total Paid</th>
+                        <th class="text-center" style="width: 14%;">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="salesLogTableBody"></tbody>
+            </table>
+
+            <div style="margin-top: 18px; display: flex; justify-content: flex-end;">
+                <button class="btn-reset" onclick="resetSalesData()">Reset Sales History</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="supabase-config.js"></script>
+    <script src="krafted.js"></script>
+</body>
+</html>
