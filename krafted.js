@@ -135,6 +135,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         await initMaintenancePage();
     } else if (pageType === 'storefront') {
         await initStorefront();
+    } else if (pageType === 'account') {
+        await initAccountPage();
     }
 
     // Shared logout link, present on the admin pages (inventory/
@@ -532,6 +534,8 @@ async function renderStorefrontAccountNav() {
     buyerAuthItem.innerHTML =
         `<span class="nav-account-label">Hi, ${escapeHTML(label)}</span>` +
         `<span class="nav-sep">·</span>` +
+        `<a href="KRAFTEDaccount.html">Account</a>` +
+        `<span class="nav-sep">·</span>` +
         `<a href="#" id="buyerLogoutBtn">Logout</a>`;
 
     document.getElementById('buyerLogoutBtn')?.addEventListener('click', async (e) => {
@@ -878,6 +882,194 @@ function initLoginPage() {
 }
 
 /* ==========================================================================
+   ACCOUNT SETTINGS PAGE LOGIC
+   Available to any signed-in user, buyer or admin. Buyers get an editable
+   profile section (username + contact number, backed by the `buyers`
+   table and its "buyers can update their own profile" RLS policy from
+   supabase-schema.sql). Admin accounts have no buyers row, so that
+   section is hidden and they only see the password form. Password
+   changes go through a reauthentication step first (re-checking the
+   current password via signInWithPassword) since Supabase Auth's
+   updateUser() alone doesn't require the current password -- without
+   that check, anyone at an already-unlocked, signed-in browser could
+   silently take over the account.
+   ========================================================================== */
+
+async function initAccountPage() {
+    const user = await waitForAuthUser();
+    if (!user) {
+        window.location.replace('KRAFTEDlogin.html');
+        return;
+    }
+
+    const admin = await isCurrentUserAdmin();
+
+    const loadingNote = document.getElementById('accountLoadingNote');
+    const content = document.getElementById('accountContent');
+    const emailDisplay = document.getElementById('accountEmailDisplay');
+    const backLink = document.getElementById('accountBackLink');
+    const profileSection = document.getElementById('profileSection');
+
+    if (emailDisplay) emailDisplay.textContent = user.email || '';
+
+    if (backLink) {
+        if (admin) {
+            backLink.href = 'KRAFTEDMP.html';
+            backLink.textContent = '← Back to Maintenance Panel';
+        } else {
+            backLink.href = 'index.html';
+            backLink.textContent = '← Back to Storefront';
+        }
+    }
+
+    // Tracks the username as currently saved in the database, so the
+    // profile form only re-checks availability when it actually changed
+    // (otherwise saving without touching the username would incorrectly
+    // report itself as "already taken").
+    let currentUsername = '';
+
+    if (admin) {
+        if (profileSection) profileSection.style.display = 'none';
+    } else {
+        try {
+            const { data, error } = await sb.from('buyers')
+                .select('username, contact_number')
+                .eq('id', user.id)
+                .maybeSingle();
+            if (error) throw error;
+            if (data) {
+                currentUsername = data.username || '';
+                const usernameInput = document.getElementById('accountUsername');
+                const contactInput = document.getElementById('accountContact');
+                if (usernameInput) usernameInput.value = currentUsername;
+                if (contactInput) contactInput.value = data.contact_number || '';
+            }
+        } catch (e) {
+            console.error('Error loading profile:', e);
+        }
+    }
+
+    if (loadingNote) loadingNote.style.display = 'none';
+    if (content) content.style.display = 'block';
+
+    const profileForm = document.getElementById('profileForm');
+    if (profileForm) {
+        profileForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const messageEl = document.getElementById('profileMessage');
+            const showMsg = (text, type) => {
+                if (!messageEl) { alert(text); return; }
+                messageEl.textContent = text;
+                messageEl.className = 'form-message ' + (type || '');
+            };
+
+            const newUsername = document.getElementById('accountUsername')?.value.trim() || '';
+            const newContact = document.getElementById('accountContact')?.value.trim() || '';
+
+            if (newUsername.length < 3) {
+                showMsg('Username must be at least 3 characters.', 'error');
+                return;
+            }
+            const contactDigits = newContact.replace(/[^0-9]/g, '');
+            if (contactDigits.length < 7) {
+                showMsg('Please enter a valid contact number.', 'error');
+                return;
+            }
+
+            const submitBtn = profileForm.querySelector('button[type="submit"]');
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving…'; }
+
+            try {
+                if (newUsername.toLowerCase() !== currentUsername.toLowerCase()) {
+                    const { data: taken, error: checkError } = await sb.rpc('username_is_taken', { p_username: newUsername });
+                    if (checkError) throw checkError;
+                    if (taken) {
+                        showMsg('That username is already taken. Please choose another.', 'error');
+                        return;
+                    }
+                }
+
+                const { error } = await sb.from('buyers')
+                    .update({ username: newUsername, contact_number: newContact })
+                    .eq('id', user.id);
+                if (error) throw error;
+
+                currentUsername = newUsername;
+                showMsg('Profile updated successfully.', 'success');
+            } catch (err) {
+                console.error('Error updating profile:', err);
+                let msg = err.message || 'Could not update profile. Please try again.';
+                if (/duplicate key|unique/i.test(msg)) msg = 'That username is already taken. Please choose another.';
+                showMsg(msg, 'error');
+            } finally {
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Save Changes'; }
+            }
+        });
+    }
+
+    const passwordForm = document.getElementById('passwordForm');
+    if (passwordForm) {
+        passwordForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const messageEl = document.getElementById('passwordMessage');
+            const showMsg = (text, type) => {
+                if (!messageEl) { alert(text); return; }
+                messageEl.textContent = text;
+                messageEl.className = 'form-message ' + (type || '');
+            };
+
+            const currentPassword = document.getElementById('currentPassword')?.value || '';
+            const newPassword = document.getElementById('newPassword')?.value || '';
+            const confirmPassword = document.getElementById('confirmNewPassword')?.value || '';
+
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                showMsg('Please fill in every field.', 'error');
+                return;
+            }
+            if (newPassword.length < 6) {
+                showMsg('New password must be at least 6 characters.', 'error');
+                return;
+            }
+            if (newPassword !== confirmPassword) {
+                showMsg('New passwords do not match.', 'error');
+                return;
+            }
+            if (newPassword === currentPassword) {
+                showMsg('New password must be different from your current password.', 'error');
+                return;
+            }
+
+            const submitBtn = passwordForm.querySelector('button[type="submit"]');
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Updating…'; }
+
+            try {
+                const { error: reauthError } = await sb.auth.signInWithPassword({
+                    email: user.email,
+                    password: currentPassword
+                });
+                if (reauthError) {
+                    showMsg('Your current password is incorrect.', 'error');
+                    return;
+                }
+
+                const { error: updateError } = await sb.auth.updateUser({ password: newPassword });
+                if (updateError) throw updateError;
+
+                passwordForm.reset();
+                showMsg('Password updated successfully.', 'success');
+            } catch (err) {
+                console.error('Error updating password:', err);
+                showMsg(err.message || 'Could not update password. Please try again.', 'error');
+            } finally {
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Update Password'; }
+            }
+        });
+    }
+}
+
+/* ==========================================================================
    BUYER REGISTRATION LOGIC
    ========================================================================== */
 
@@ -1074,6 +1266,13 @@ async function initSuperAdminPanel() {
 
     await Promise.all([renderAdminTeamTable(), renderUserAccountsTable()]);
 
+    const accountsSearchInput = document.getElementById('accountsSearchInput');
+    const accountsTypeFilter = document.getElementById('accountsTypeFilter');
+    const accountsStatusFilter = document.getElementById('accountsStatusFilter');
+    if (accountsSearchInput) accountsSearchInput.addEventListener('input', applyAccountsFilters);
+    if (accountsTypeFilter) accountsTypeFilter.addEventListener('change', applyAccountsFilters);
+    if (accountsStatusFilter) accountsStatusFilter.addEventListener('change', applyAccountsFilters);
+
     const addAdminForm = document.getElementById('addAdminForm');
     if (addAdminForm) {
         addAdminForm.addEventListener('submit', async (e) => {
@@ -1144,6 +1343,8 @@ async function renderAdminTeamTable() {
     }
 }
 
+let userAccountsCache = [];
+
 async function renderUserAccountsTable() {
     const tbody = document.getElementById('userAccountsTableBody');
     if (!tbody) return;
@@ -1151,12 +1352,66 @@ async function renderUserAccountsTable() {
     try {
         const { data, error } = await sb.rpc('list_platform_users');
         if (error) throw error;
+        userAccountsCache = data || [];
+        applyAccountsFilters();
+    } catch (e) {
+        console.error('Error loading user accounts:', e);
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#c0392b;">Could not load user accounts.</td></tr>';
+    }
+}
 
-        if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No accounts found.</td></tr>';
-            return;
+// Re-filters the already-fetched account list in memory (search text +
+// type + status) and re-renders -- no network round-trip, so typing in
+// the search box stays instant.
+function applyAccountsFilters() {
+    const tbody = document.getElementById('userAccountsTableBody');
+    if (!tbody) return;
+
+    const searchTerm = (document.getElementById('accountsSearchInput')?.value || '').trim().toLowerCase();
+    const typeFilter = document.getElementById('accountsTypeFilter')?.value || 'All';
+    const statusFilter = document.getElementById('accountsStatusFilter')?.value || 'All';
+
+    const data = userAccountsCache.filter(row => {
+        if (searchTerm) {
+            const haystack = `${row.email || ''} ${row.username || ''}`.toLowerCase();
+            if (!haystack.includes(searchTerm)) return false;
         }
 
+        if (typeFilter !== 'All') {
+            const accountType = row.admin_role === 'super_admin' || row.admin_role === 'admin' ? 'admin' : 'buyer';
+            if (accountType !== typeFilter) return false;
+        }
+
+        if (statusFilter !== 'All') {
+            const isDisabled = !!row.banned;
+            if (statusFilter === 'disabled' && !isDisabled) return false;
+            if (statusFilter === 'active' && isDisabled) return false;
+        }
+
+        return true;
+    });
+
+    if (data.length === 0) {
+        const msg = userAccountsCache.length === 0 ? 'No accounts found.' : 'No accounts match this filter.';
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">${msg}</td></tr>`;
+        return;
+    }
+
+    renderUserAccountsRows(data);
+}
+
+window.clearAccountsFilters = function() {
+    const search = document.getElementById('accountsSearchInput');
+    const type = document.getElementById('accountsTypeFilter');
+    const status = document.getElementById('accountsStatusFilter');
+    if (search) search.value = '';
+    if (type) type.value = 'All';
+    if (status) status.value = 'All';
+    applyAccountsFilters();
+};
+
+function renderUserAccountsRows(data) {
+    const tbody = document.getElementById('userAccountsTableBody');
         tbody.innerHTML = data.map(row => {
             const safeEmail = escapeHTML(row.email || 'Unknown');
             const safeUsername = row.username ? ` <span style="color:#8C7B7F;">(${escapeHTML(row.username)})</span>` : '';
@@ -1197,10 +1452,6 @@ async function renderUserAccountsTable() {
                 </tr>
             `;
         }).join('');
-    } catch (e) {
-        console.error('Error loading user accounts:', e);
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#c0392b;">Could not load user accounts.</td></tr>';
-    }
 }
 
 window.removeCoAdmin = async function(adminId) {
