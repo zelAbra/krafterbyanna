@@ -2040,7 +2040,7 @@ window.exportDataToExcel = async function() {
     try {
         const wb = await buildKraftedWorkbook(true);
         const dateStamp = new Date().toISOString().slice(0, 10);
-        XLSX.writeFile(wb, `krafted-data-export-${dateStamp}.xlsx`);
+        XLSX.writeFile(wb, `stitches-and-things-data-export-${dateStamp}.xlsx`);
     } catch (e) {
         console.error('Excel export failed:', e);
         alert('Export failed: ' + (e.message || 'please try again.'));
@@ -2066,7 +2066,7 @@ window.resetSalesData = async function() {
     try {
         const wb = await buildKraftedWorkbook(false);
         const dateStamp = new Date().toISOString().slice(0, 10);
-        XLSX.writeFile(wb, `krafted-backup-before-reset-${dateStamp}.xlsx`);
+        XLSX.writeFile(wb, `stitches-and-things-backup-before-reset-${dateStamp}.xlsx`);
     } catch (e) {
         console.error('Backup export failed:', e);
         if (!confirm(
