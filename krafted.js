@@ -38,6 +38,328 @@
 // SUPABASE_SETUP_GUIDE.md for how to create the project, run the schema,
 // and create the admin account this file expects.
 
+/* ==========================================================================
+   UI FEEDBACK LAYER (toasts + confirm modal)
+   Every page loads this file, so this is the one place to own the small
+   set of UI primitives every page needs, instead of duplicating a
+   <style> block and container markup into all seven HTML files. It
+   injects its own stylesheet + containers on first run and reads the
+   brand colors from each page's own :root custom properties (--primary-
+   pink, --text-dark, etc.), so it re-skins itself automatically and
+   never has to hardcode a palette that could drift from the page CSS.
+
+   window.showToast(message, type)      -- replaces alert() for
+                                            non-blocking notices.
+                                            type: 'info' | 'success' |
+                                            'error' | 'warning'
+   window.showConfirm(message, options) -- replaces confirm(). Returns a
+                                            Promise<boolean>; await it.
+                                            options: { title, confirmText,
+                                            cancelText, danger }
+   ========================================================================== */
+(function initKraftedUI() {
+    if (window.showToast && window.showConfirm) return; // already initialized
+
+    const STYLE_ID = 'krafted-ui-styles';
+    if (!document.getElementById(STYLE_ID)) {
+        const style = document.createElement('style');
+        style.id = STYLE_ID;
+        style.textContent = `
+#krafted-toast-container {
+    position: fixed;
+    top: max(16px, env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(92vw, 420px);
+    pointer-events: none;
+}
+.krafted-toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: var(--card-bg, rgba(255,255,255,0.96));
+    border: 1px solid rgba(255,255,255,0.7);
+    border-left: 4px solid var(--primary-pink, #E0A0AC);
+    border-radius: 14px;
+    box-shadow: var(--shadow-lg, 0 20px 50px rgba(92,74,78,0.15));
+    padding: 13px 14px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.85rem;
+    color: var(--text-dark, #4A3A3E);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    opacity: 0;
+    transform: translateY(-10px) scale(0.97);
+    transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.krafted-toast-show { opacity: 1; transform: translateY(0) scale(1); }
+.krafted-toast-hide { opacity: 0; transform: translateY(-8px) scale(0.97); }
+.krafted-toast-success { border-left-color: #27AE60; }
+.krafted-toast-error   { border-left-color: #E74C3C; }
+.krafted-toast-warning { border-left-color: #E67E22; }
+.krafted-toast-msg { flex: 1; line-height: 1.4; white-space: pre-line; }
+.krafted-toast-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.15rem;
+    line-height: 1;
+    color: var(--text-light, #7A6A6E);
+    padding: 0 2px;
+    font-family: inherit;
+}
+.krafted-toast-close:hover { color: var(--primary-pink-deep, #C97A8A); }
+
+.krafted-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(74, 58, 62, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+.krafted-confirm-show { opacity: 1; }
+.krafted-confirm-box {
+    background: var(--card-bg, rgba(255,255,255,0.97));
+    border-radius: var(--radius, 18px);
+    box-shadow: var(--shadow-lg, 0 20px 50px rgba(92,74,78,0.15));
+    border: 1px solid rgba(255,255,255,0.7);
+    max-width: 420px;
+    width: 100%;
+    padding: 26px 24px;
+    font-family: 'Poppins', sans-serif;
+    transform: translateY(10px) scale(0.97);
+    transition: transform 0.18s ease;
+}
+.krafted-confirm-show .krafted-confirm-box { transform: translateY(0) scale(1); }
+.krafted-confirm-title {
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: var(--text-dark, #4A3A3E);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.krafted-confirm-msg {
+    font-size: 0.86rem;
+    color: var(--text-dark, #4A3A3E);
+    line-height: 1.5;
+    white-space: pre-line;
+    margin-bottom: 22px;
+}
+.krafted-confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.krafted-confirm-cancel, .krafted-confirm-ok {
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 11px 20px;
+    border-radius: var(--radius-pill, 999px);
+    cursor: pointer;
+    border: none;
+    min-height: 44px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.krafted-confirm-cancel {
+    background: rgba(224, 160, 172, 0.15);
+    color: var(--text-dark, #4A3A3E);
+}
+.krafted-confirm-cancel:hover { background: rgba(224, 160, 172, 0.28); }
+.krafted-confirm-ok {
+    background: linear-gradient(135deg, var(--primary-pink, #E0A0AC) 0%, var(--primary-pink-deep, #C97A8A) 100%);
+    color: white;
+    box-shadow: 0 5px 16px rgba(224, 160, 172, 0.42);
+}
+.krafted-confirm-ok:hover { transform: translateY(-1px); }
+.krafted-confirm-danger {
+    background: linear-gradient(135deg, #E74C3C 0%, #C0392B 100%);
+    box-shadow: 0 5px 16px rgba(231, 76, 60, 0.35);
+}
+
+@media (max-width: 480px) {
+    .krafted-confirm-box { padding: 22px 18px; }
+    .krafted-confirm-actions { flex-direction: column-reverse; }
+    .krafted-confirm-cancel, .krafted-confirm-ok { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .krafted-toast, .krafted-confirm-overlay, .krafted-confirm-box {
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Sitewide keyboard-focus visibility. Hover states already exist per
+   page; this covers tab/keyboard navigation, which had no visible
+   indicator anywhere on the site before. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2.5px solid var(--primary-pink-deep, #C97A8A);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+`;
+        document.head.appendChild(style);
+    }
+
+    function ensureToastContainer() {
+        let c = document.getElementById('krafted-toast-container');
+        if (!c) {
+            c = document.createElement('div');
+            c.id = 'krafted-toast-container';
+            c.setAttribute('aria-live', 'polite');
+            c.setAttribute('aria-atomic', 'true');
+            document.body.appendChild(c);
+        }
+        return c;
+    }
+
+    // type: 'info' | 'success' | 'error' | 'warning'
+    window.showToast = function showToast(message, type, duration) {
+        type = type || 'info';
+        const container = ensureToastContainer();
+
+        const toast = document.createElement('div');
+        toast.className = 'krafted-toast krafted-toast-' + type;
+        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+
+        const msg = document.createElement('span');
+        msg.className = 'krafted-toast-msg';
+        msg.textContent = message;
+
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'krafted-toast-close';
+        closeBtn.setAttribute('aria-label', 'Dismiss notification');
+        closeBtn.innerHTML = '&times;';
+
+        toast.appendChild(msg);
+        toast.appendChild(closeBtn);
+        container.appendChild(toast);
+
+        requestAnimationFrame(() => toast.classList.add('krafted-toast-show'));
+
+        let dismissTimer = setTimeout(dismiss, duration || (type === 'error' ? 6000 : 4000));
+
+        function dismiss() {
+            clearTimeout(dismissTimer);
+            toast.classList.remove('krafted-toast-show');
+            toast.classList.add('krafted-toast-hide');
+            setTimeout(() => toast.remove(), 220);
+        }
+
+        closeBtn.addEventListener('click', dismiss);
+        toast.addEventListener('mouseenter', () => clearTimeout(dismissTimer));
+        toast.addEventListener('mouseleave', () => { dismissTimer = setTimeout(dismiss, 1500); });
+
+        return dismiss;
+    };
+
+    // Returns a Promise<boolean> -- resolves true on confirm, false on
+    // cancel/Escape/backdrop click. Await it in place of confirm().
+    window.showConfirm = function showConfirm(message, opts) {
+        opts = opts || {};
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'krafted-confirm-overlay';
+
+            const box = document.createElement('div');
+            box.className = 'krafted-confirm-box';
+            box.setAttribute('role', 'alertdialog');
+            box.setAttribute('aria-modal', 'true');
+            box.setAttribute('aria-labelledby', 'krafted-confirm-title');
+            box.setAttribute('aria-describedby', 'krafted-confirm-msg');
+
+            const title = document.createElement('h3');
+            title.id = 'krafted-confirm-title';
+            title.className = 'krafted-confirm-title';
+            title.textContent = opts.title || 'Please confirm';
+
+            const msgEl = document.createElement('p');
+            msgEl.id = 'krafted-confirm-msg';
+            msgEl.className = 'krafted-confirm-msg';
+            msgEl.textContent = message;
+
+            const actions = document.createElement('div');
+            actions.className = 'krafted-confirm-actions';
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.className = 'krafted-confirm-cancel';
+            cancelBtn.textContent = opts.cancelText || 'Cancel';
+
+            const okBtn = document.createElement('button');
+            okBtn.type = 'button';
+            okBtn.className = 'krafted-confirm-ok' + (opts.danger ? ' krafted-confirm-danger' : '');
+            okBtn.textContent = opts.confirmText || 'Confirm';
+
+            actions.appendChild(cancelBtn);
+            actions.appendChild(okBtn);
+            box.appendChild(title);
+            box.appendChild(msgEl);
+            box.appendChild(actions);
+            overlay.appendChild(box);
+            document.body.appendChild(overlay);
+
+            const previousOverflow = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+            const previouslyFocused = document.activeElement;
+
+            requestAnimationFrame(() => {
+                overlay.classList.add('krafted-confirm-show');
+                okBtn.focus();
+            });
+
+            function close(result) {
+                overlay.classList.remove('krafted-confirm-show');
+                document.removeEventListener('keydown', onKeydown);
+                document.body.style.overflow = previousOverflow;
+                setTimeout(() => {
+                    overlay.remove();
+                    if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
+                        previouslyFocused.focus();
+                    }
+                }, 180);
+                resolve(result);
+            }
+
+            function onKeydown(e) {
+                if (e.key === 'Escape') {
+                    close(false);
+                    return;
+                }
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const focusables = [cancelBtn, okBtn];
+                    const idx = focusables.indexOf(document.activeElement);
+                    const next = e.shiftKey
+                        ? focusables[idx <= 0 ? focusables.length - 1 : idx - 1]
+                        : focusables[idx === focusables.length - 1 ? 0 : idx + 1];
+                    next.focus();
+                }
+            }
+
+            cancelBtn.addEventListener('click', () => close(false));
+            okBtn.addEventListener('click', () => close(true));
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) close(false); });
+            document.addEventListener('keydown', onKeydown);
+        });
+    };
+})();
+
 let cart = [];
 
 // Local placeholder (no external dependency on via.placeholder.com, which
@@ -278,7 +600,7 @@ async function addProduct(product) {
         return true;
     } catch (e) {
         console.error("Error saving product to Supabase:", e);
-        alert("Save failed: could not reach the database, or you're not signed in. Check your connection and try again.");
+        showToast("Save failed: could not reach the database, or you're not signed in. Check your connection and try again.", 'error');
         return false;
     }
 }
@@ -290,7 +612,7 @@ async function deleteProductDoc(id) {
         return true;
     } catch (e) {
         console.error("Error deleting product from Supabase:", e);
-        alert("Delete failed: could not reach the database, or you're not signed in.");
+        showToast("Delete failed: could not reach the database, or you're not signed in.", 'error');
         return false;
     }
 }
@@ -575,7 +897,7 @@ async function renderShop(categoryFilter) {
     const products = filterShopCategory(allProducts, categoryFilter);
 
     if (products.length === 0) {
-        productGrid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #8C7B7F; margin-top: 50px;">No items found in this category. Check back later!</p>`;
+        productGrid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #7A6A6E; margin-top: 50px;">No items found in this category. Check back later!</p>`;
         return;
     }
 
@@ -601,7 +923,7 @@ async function renderShop(categoryFilter) {
                     <h3 style="margin: 5px 0;">${safeTitle}</h3>
                     <div class="price">₱${formatCurrency(product.price)}</div>
 
-                    <div style="font-size: 0.75rem; color: ${availableStock === 0 ? '#E74C3C' : '#8C7B7F'}; margin-bottom: 10px; font-weight: 600;">
+                    <div style="font-size: 0.75rem; color: ${availableStock === 0 ? '#E74C3C' : '#7A6A6E'}; margin-bottom: 10px; font-weight: 600;">
                         ${availableStock > 0 ? `${availableStock} units available` : 'Out of Stock'}
                     </div>
 
@@ -642,7 +964,7 @@ window.addToCart = async function(productId, maxAddable) {
     const qtyToAdd = valSpan ? parseInt(valSpan.textContent, 10) : 1;
 
     if (qtyToAdd > maxAddable) {
-        alert("Not enough stock available.");
+        showToast("Not enough stock available.", 'warning');
         return;
     }
 
@@ -712,7 +1034,7 @@ window.updateCartQuantity = async function(productId, delta) {
         const newQty = item.quantity + delta;
 
         if (newQty > availableStock) {
-            alert("Maximum stock reached for this item.");
+            showToast("Maximum stock reached for this item.", 'warning');
             return;
         }
 
@@ -736,7 +1058,7 @@ function updateCartUI() {
     if (countDisplay) countDisplay.textContent = totalItems;
 
     if (cart.length === 0) {
-        if (container) container.innerHTML = `<p style="text-align:center; color: var(--text-light, #8C7B7F); margin-top:20px;">Your cart is currently empty.</p>`;
+        if (container) container.innerHTML = `<p style="text-align:center; color: var(--text-light, #7A6A6E); margin-top:20px;">Your cart is currently empty.</p>`;
         if (totalDisplay) totalDisplay.textContent = "₱0.00";
         return;
     }
@@ -779,7 +1101,7 @@ function updateCartUI() {
 // + sales-log rows in one atomic step. See supabase-schema.sql.
 async function checkout() {
     if (cart.length === 0) {
-        alert("Your cart is empty!");
+        showToast("Your cart is empty!", 'warning');
         return;
     }
 
@@ -788,7 +1110,7 @@ async function checkout() {
     const { data, error } = await sb.rpc('create_order', { p_items: payloadItems });
 
     if (error) {
-        alert("Checkout could not be completed:\n\n" + (error.message || "Please check your connection and try again.") + "\n\nYour cart has been refreshed against current stock.");
+        showToast("Checkout could not be completed: " + (error.message || "Please check your connection and try again.") + " Your cart has been refreshed against current stock.", 'error', 8000);
         productsCache = null;
         ordersCache = null;
         await renderShop();
@@ -796,7 +1118,7 @@ async function checkout() {
         return;
     }
 
-    alert(`Thank you for your purchase!\nOrder ID: ${data.order_id}\nTotal: ₱${formatCurrency(data.total)}`);
+    showToast(`Thank you for your purchase! Order ID: ${data.order_id} · Total: ₱${formatCurrency(data.total)}`, 'success', 6000);
 
     cart = [];
     updateCartUI();
@@ -825,7 +1147,7 @@ function initLoginPage() {
 
     const messageEl = document.getElementById('loginMessage');
     const showMessage = (text) => {
-        if (!messageEl) { alert(text); return; }
+        if (!messageEl) { showToast(text, 'error'); return; }
         messageEl.textContent = text;
         messageEl.className = 'form-message error';
     };
@@ -959,7 +1281,7 @@ async function initAccountPage() {
 
             const messageEl = document.getElementById('profileMessage');
             const showMsg = (text, type) => {
-                if (!messageEl) { alert(text); return; }
+                if (!messageEl) { showToast(text, 'error'); return; }
                 messageEl.textContent = text;
                 messageEl.className = 'form-message ' + (type || '');
             };
@@ -1015,7 +1337,7 @@ async function initAccountPage() {
 
             const messageEl = document.getElementById('passwordMessage');
             const showMsg = (text, type) => {
-                if (!messageEl) { alert(text); return; }
+                if (!messageEl) { showToast(text, 'error'); return; }
                 messageEl.textContent = text;
                 messageEl.className = 'form-message ' + (type || '');
             };
@@ -1080,7 +1402,7 @@ function initRegisterPage() {
     const messageEl = document.getElementById('formMessage');
 
     const showMessage = (text, type) => {
-        if (!messageEl) { alert(text); return; }
+        if (!messageEl) { showToast(text, 'error'); return; }
         messageEl.textContent = text;
         messageEl.className = 'form-message ' + (type || '');
     };
@@ -1204,7 +1526,7 @@ async function initMaintenancePage() {
             // before the decimal point, max 99,999,999.99) -- catching it
             // here gives a clear message instead of a raw 400 from Postgres.
             if (isNaN(parsedPrice) || parsedPrice <= 0 || parsedPrice > 99999999.99) {
-                alert('Please enter a price between ₱1 and ₱99,999,999.99.');
+                showToast('Please enter a price between ₱1 and ₱99,999,999.99.', 'warning');
                 return;
             }
 
@@ -1216,7 +1538,7 @@ async function initMaintenancePage() {
                 const file = imageInput.files[0];
                 const MAX_ORIGINAL_BYTES = 10 * 1024 * 1024; // 10MB original file cap
                 if (file.size > MAX_ORIGINAL_BYTES) {
-                    alert("That photo is too large (over 10MB). Please choose a smaller image.");
+                    showToast("That photo is too large (over 10MB). Please choose a smaller image.", 'warning');
                     return;
                 }
 
@@ -1291,7 +1613,7 @@ async function initSuperAdminPanel() {
                 await Promise.all([renderAdminTeamTable(), renderUserAccountsTable()]);
             } catch (err) {
                 console.error('Error adding co-admin:', err);
-                alert('Could not add co-admin: ' + (err.message || 'please try again.'));
+                showToast('Could not add co-admin: ' + (err.message || 'please try again.'), 'error');
             } finally {
                 if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Add Co-Admin'; }
             }
@@ -1332,7 +1654,7 @@ async function renderAdminTeamTable() {
                 <tr>
                     <td>${safeEmail}</td>
                     <td>${roleBadge}</td>
-                    <td style="font-size:0.85rem; color:#8C7B7F;">${formattedDate}</td>
+                    <td style="font-size:0.85rem; color:#7A6A6E;">${formattedDate}</td>
                     <td>${actionCell}</td>
                 </tr>
             `;
@@ -1414,7 +1736,7 @@ function renderUserAccountsRows(data) {
     const tbody = document.getElementById('userAccountsTableBody');
         tbody.innerHTML = data.map(row => {
             const safeEmail = escapeHTML(row.email || 'Unknown');
-            const safeUsername = row.username ? ` <span style="color:#8C7B7F;">(${escapeHTML(row.username)})</span>` : '';
+            const safeUsername = row.username ? ` <span style="color:#7A6A6E;">(${escapeHTML(row.username)})</span>` : '';
             const safeId = escapeHTML(String(row.id));
             const isSuperRow = row.admin_role === 'super_admin';
 
@@ -1447,7 +1769,7 @@ function renderUserAccountsRows(data) {
                     <td>${safeEmail}${safeUsername}</td>
                     <td>${typeBadge}</td>
                     <td>${statusBadge}</td>
-                    <td style="font-size:0.85rem; color:#8C7B7F;">${formattedDate}</td>
+                    <td style="font-size:0.85rem; color:#7A6A6E;">${formattedDate}</td>
                     <td>${actionCell}</td>
                 </tr>
             `;
@@ -1455,16 +1777,18 @@ function renderUserAccountsRows(data) {
 }
 
 window.removeCoAdmin = async function(adminId) {
-    if (!confirm('Remove this co-admin? They will keep their account and can still shop as a regular customer, but will lose access to the Maintenance Panel and Inventory Dashboard.')) {
-        return;
-    }
+    const ok = await showConfirm(
+        'They will keep their account and can still shop as a regular customer, but will lose access to the Maintenance Panel and Inventory Dashboard.',
+        { title: 'Remove this co-admin?', confirmText: 'Remove' }
+    );
+    if (!ok) return;
     try {
         const { error } = await sb.rpc('demote_admin', { p_admin_id: adminId });
         if (error) throw error;
         await Promise.all([renderAdminTeamTable(), renderUserAccountsTable()]);
     } catch (e) {
         console.error('Error removing co-admin:', e);
-        alert('Could not remove co-admin: ' + (e.message || 'please try again.'));
+        showToast('Could not remove co-admin: ' + (e.message || 'please try again.'), 'error');
     }
 };
 
@@ -1472,11 +1796,13 @@ window.removeCoAdmin = async function(adminId) {
 // opposite: click "Disable" (currentlyBanned=false) -> set banned=true.
 window.toggleUserBanned = async function(userId, currentlyBanned) {
     const willBan = !currentlyBanned;
+    const confirmTitle = willBan ? 'Disable this account?' : 'Re-enable this account?';
     const confirmMsg = willBan
-        ? 'Disable this account? They will be unable to sign in until you re-enable it. Their data is not affected.'
-        : 'Re-enable this account? They will be able to sign in again immediately.';
+        ? 'They will be unable to sign in until you re-enable it. Their data is not affected.'
+        : 'They will be able to sign in again immediately.';
 
-    if (!confirm(confirmMsg)) return;
+    const ok = await showConfirm(confirmMsg, { title: confirmTitle, confirmText: willBan ? 'Disable' : 'Re-enable', danger: willBan });
+    if (!ok) return;
 
     try {
         const { error } = await sb.rpc('set_user_banned', { p_user_id: userId, p_banned: willBan });
@@ -1484,21 +1810,23 @@ window.toggleUserBanned = async function(userId, currentlyBanned) {
         await renderUserAccountsTable();
     } catch (e) {
         console.error('Error updating account status:', e);
-        alert('Could not update this account: ' + (e.message || 'please try again.'));
+        showToast('Could not update this account: ' + (e.message || 'please try again.'), 'error');
     }
 };
 
 window.deleteUserAccount = async function(userId) {
-    if (!confirm('Permanently delete this account?\n\nThis removes their login and admin/buyer profile entirely. Past orders and sales history are NOT affected. This cannot be undone.')) {
-        return;
-    }
+    const ok = await showConfirm(
+        'This removes their login and admin/buyer profile entirely. Past orders and sales history are NOT affected. This cannot be undone.',
+        { title: 'Permanently delete this account?', confirmText: 'Delete', danger: true }
+    );
+    if (!ok) return;
     try {
         const { error } = await sb.rpc('delete_platform_user', { p_user_id: userId });
         if (error) throw error;
         await Promise.all([renderAdminTeamTable(), renderUserAccountsTable()]);
     } catch (e) {
         console.error('Error deleting account:', e);
-        alert('Could not delete this account: ' + (e.message || 'please try again.'));
+        showToast('Could not delete this account: ' + (e.message || 'please try again.'), 'error');
     }
 };
 
@@ -1552,7 +1880,7 @@ async function renderMaintenanceTable() {
                 <td><span style="background: #F8E2E7; color: #C06C84; padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">${safeCategory}</span></td>
                 <td>₱${formatCurrency(item.price)}</td>
                 <td>${item.stock !== undefined ? item.stock : 0} Units</td>
-                <td style="font-size: 0.85rem; color: #8C7B7F;">${formattedDate}</td>
+                <td style="font-size: 0.85rem; color: #7A6A6E;">${formattedDate}</td>
                 <td>
                     <button onclick="deleteProduct('${safeId}')" style="background: #E74C3C; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">Remove</button>
                 </td>
@@ -1562,7 +1890,8 @@ async function renderMaintenanceTable() {
 }
 
 window.deleteProduct = async function(id) {
-    if (confirm('Remove this product from the shop catalog?')) {
+    const ok = await showConfirm('This removes it from the shop catalog.', { title: 'Remove this product?', confirmText: 'Remove', danger: true });
+    if (ok) {
         await deleteProductDoc(id);
         productsCache = null;
 
@@ -1640,7 +1969,7 @@ async function renderInventoryDashboard() {
 
     if (tableBody) {
         if (filteredProducts.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding: 25px; color: #8C7B7F;">No products found matching the criteria.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding: 25px; color: #7A6A6E;">No products found matching the criteria.</td></tr>`;
         } else {
             const productStats = filteredProducts.map(product => {
                 // "Units sold" / "Revenue" for the table are scoped to
@@ -1710,7 +2039,7 @@ async function renderInventoryDashboard() {
                         <td class="text-center">
                             <span class="badge-sales">${item.unitsSold}</span>
                         </td>
-                        <td class="text-center" style="font-size: 0.85rem; color: #8C7B7F;">
+                        <td class="text-center" style="font-size: 0.85rem; color: #7A6A6E;">
                             ${formattedDate}
                         </td>
                         <td class="text-right" style="font-weight: 600; color: #5C4A4E;">
@@ -1745,7 +2074,7 @@ async function renderInventoryDashboard() {
 
     if (salesLogTbody) {
         if (filteredSales.length === 0) {
-            salesLogTbody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding: 25px; color: #8C7B7F;">No individual sales transactions logged for the selected period.</td></tr>`;
+            salesLogTbody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding: 25px; color: #7A6A6E;">No individual sales transactions logged for the selected period.</td></tr>`;
             if (metricTotalRefunded) metricTotalRefunded.textContent = `₱${formatCurrency(0)}`;
         } else {
             let totalRefunded = 0;
@@ -1849,9 +2178,11 @@ window.clearDateFilter = function() {
 // buyer would also satisfy) before touching anything -- see
 // supabase-schema.sql.
 window.refundSale = async function(transactionId, productId) {
-    if (!confirm('Process a refund for this sale?\n\nThis will remove it from revenue/units-sold totals and restore the item to available stock. This cannot be undone.')) {
-        return;
-    }
+    const okRefund = await showConfirm(
+        'This will remove it from revenue/units-sold totals and restore the item to available stock. This cannot be undone.',
+        { title: 'Process this refund?', confirmText: 'Refund', danger: true }
+    );
+    if (!okRefund) return;
 
     const { error } = await sb.rpc('refund_sale', {
         p_transaction_id: transactionId,
@@ -1860,7 +2191,7 @@ window.refundSale = async function(transactionId, productId) {
 
     if (error) {
         console.error('Error processing refund:', error);
-        alert('Refund failed: ' + (error.message || 'please try again.'));
+        showToast('Refund failed: ' + (error.message || 'please try again.'), 'error');
         return;
     }
 
@@ -1873,15 +2204,17 @@ window.refundSale = async function(transactionId, productId) {
 // so any co-admin can do this -- matches the existing per-item refund
 // permission level. See supabase-schema.sql.
 window.cancelOrder = async function(transactionId) {
-    if (!confirm('Cancel this entire transaction?\n\nThis refunds every item in the order at once, removes it from revenue/units-sold totals, and restores all of its items to available stock. This cannot be undone.')) {
-        return;
-    }
+    const okCancel = await showConfirm(
+        'This refunds every item in the order at once, removes it from revenue/units-sold totals, and restores all of its items to available stock. This cannot be undone.',
+        { title: 'Cancel this entire transaction?', confirmText: 'Cancel Transaction', danger: true }
+    );
+    if (!okCancel) return;
 
     const { error } = await sb.rpc('cancel_order', { p_transaction_id: transactionId });
 
     if (error) {
         console.error('Error cancelling transaction:', error);
-        alert('Cancel failed: ' + (error.message || 'please try again.'));
+        showToast('Cancel failed: ' + (error.message || 'please try again.'), 'error');
         return;
     }
 
@@ -2043,7 +2376,7 @@ window.exportDataToExcel = async function() {
         XLSX.writeFile(wb, `stitches-and-things-data-export-${dateStamp}.xlsx`);
     } catch (e) {
         console.error('Excel export failed:', e);
-        alert('Export failed: ' + (e.message || 'please try again.'));
+        showToast('Export failed: ' + (e.message || 'please try again.'), 'error');
     }
 };
 
@@ -2056,12 +2389,11 @@ window.exportDataToExcel = async function() {
 // (filters ignored), since the reset itself wipes everything regardless
 // of what's selected in the filter bar at the time.
 window.resetSalesData = async function() {
-    if (!confirm(
-        'This will permanently delete ALL orders and sales history (your product catalog stays intact).\n\n' +
-        'This cannot be undone. Continue?'
-    )) {
-        return;
-    }
+    const okStart = await showConfirm(
+        'This will permanently delete ALL orders and sales history (your product catalog stays intact). This cannot be undone.',
+        { title: 'Reset all sales data?', confirmText: 'Continue', danger: true }
+    );
+    if (!okStart) return;
 
     try {
         const wb = await buildKraftedWorkbook(false);
@@ -2069,29 +2401,27 @@ window.resetSalesData = async function() {
         XLSX.writeFile(wb, `stitches-and-things-backup-before-reset-${dateStamp}.xlsx`);
     } catch (e) {
         console.error('Backup export failed:', e);
-        if (!confirm(
-            'Could not generate the Excel backup (' + (e.message || 'unknown error') + ').\n\n' +
-            'Continue with the reset anyway, without a backup?'
-        )) {
-            return;
-        }
+        const okNoBackup = await showConfirm(
+            'Could not generate the Excel backup (' + (e.message || 'unknown error') + ').',
+            { title: 'Continue without a backup?', confirmText: 'Continue Anyway', danger: true }
+        );
+        if (!okNoBackup) return;
     }
 
-    if (!confirm(
-        'Backup downloaded. This is your last chance to back out.\n\n' +
-        'Permanently delete all sales data now? This cannot be undone.'
-    )) {
-        return;
-    }
+    const okFinal = await showConfirm(
+        'Backup downloaded. This is your last chance to back out. Permanently delete all sales data now? This cannot be undone.',
+        { title: 'Final confirmation', confirmText: 'Delete All Sales Data', danger: true }
+    );
+    if (!okFinal) return;
 
     const { error } = await sb.rpc('reset_sales_data');
     if (error) {
         console.error('Error resetting sales data:', error);
-        alert('Reset failed: ' + (error.message || 'please try again.'));
+        showToast('Reset failed: ' + (error.message || 'please try again.'), 'error');
         return;
     }
 
     ordersCache = null;
     await renderInventoryDashboard();
-    alert('Sales history has been reset.');
+    showToast('Sales history has been reset.', 'success');
 };
